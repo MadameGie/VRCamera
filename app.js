@@ -1,46 +1,50 @@
 import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
 import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 
+const startBtn = document.getElementById("startBtn");
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas3d");
-const statusBox = document.getElementById("status");
 
 const renderer = new THREE.WebGLRenderer({
     canvas,
-    alpha: true,
-    antialias: true
+    alpha:true,
+    antialias:true
 });
 
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+);
+
+renderer.setPixelRatio(
+    window.devicePixelRatio
+);
 
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
     45,
-    window.innerWidth / window.innerHeight,
+    window.innerWidth/window.innerHeight,
     0.1,
     100
 );
 
 camera.position.z = 5;
 
-const hemi = new THREE.HemisphereLight(
-    0xffffff,
-    0x666666,
-    3
+scene.add(
+    new THREE.HemisphereLight(
+        0xffffff,
+        0x444444,
+        3
+    )
 );
-
-scene.add(hemi);
 
 let model = null;
 
-const loader = new GLTFLoader();
-
-loader.load(
+new GLTFLoader().load(
     "scene.glb",
 
-    (gltf) => {
+    (gltf)=>{
 
         model = gltf.scene;
 
@@ -54,147 +58,179 @@ loader.load(
 
         scene.add(model);
 
-        statusBox.innerText =
-        "Arahkan kamera ke telapak tangan";
+        console.log("GLB Loaded");
     },
 
     undefined,
 
-    (err) => {
+    (err)=>{
         console.error(err);
-        statusBox.innerText =
-        "Gagal load scene.glb";
+        alert("scene.glb gagal dimuat");
     }
 );
-
-const stream =
-await navigator.mediaDevices.getUserMedia({
-    video: {
-        facingMode: {
-            ideal: "environment"
-        }
-    },
-    audio: false
-});
-
-video.srcObject = stream;
 
 let smoothX = 0;
 let smoothY = 0;
 let smoothScale = 1;
 
-const hands = new Hands({
-    locateFile: (file) =>
-        `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
+startBtn.addEventListener(
+    "click",
+    startAR
+);
 
-hands.setOptions({
-    maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.7,
-    minTrackingConfidence: 0.7
-});
+async function startAR(){
 
-hands.onResults((results) => {
+    startBtn.style.display = "none";
 
-    if (!model) return;
+    try{
 
-    if (
-        !results.multiHandLandmarks ||
-        results.multiHandLandmarks.length === 0
-    ) {
+        const stream =
+        await navigator.mediaDevices.getUserMedia({
+            video:{
+                facingMode:{
+                    ideal:"environment"
+                }
+            },
+            audio:false
+        });
 
-        model.visible = false;
-        return;
+        video.srcObject = stream;
+
+        await video.play();
+
+        startHandTracking();
+
     }
 
-    const hand =
-    results.multiHandLandmarks[0];
+    catch(err){
 
-    const palm =
-    hand[9];
+        console.error(err);
 
-    const indexBase =
-    hand[5];
+        alert(
+            "Kamera gagal: " +
+            err.message
+        );
+    }
+}
 
-    const pinkyBase =
-    hand[17];
+function startHandTracking(){
 
-    const handWidth =
-    Math.sqrt(
-        Math.pow(
+    const hands = new Hands({
+        locateFile:(file)=>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+
+    hands.setOptions({
+        maxNumHands:1,
+        modelComplexity:1,
+        minDetectionConfidence:0.7,
+        minTrackingConfidence:0.7
+    });
+
+    hands.onResults((results)=>{
+
+        if(!model) return;
+
+        if(
+            !results.multiHandLandmarks ||
+            results.multiHandLandmarks.length === 0
+        ){
+            model.visible = false;
+            return;
+        }
+
+        const hand =
+        results.multiHandLandmarks[0];
+
+        const palm =
+        hand[9];
+
+        const indexBase =
+        hand[5];
+
+        const pinkyBase =
+        hand[17];
+
+        const handWidth =
+        Math.hypot(
             indexBase.x - pinkyBase.x,
-            2
-        ) +
-        Math.pow(
-            indexBase.y - pinkyBase.y,
-            2
-        )
-    );
+            indexBase.y - pinkyBase.y
+        );
 
-    const targetX =
-    (palm.x - 0.5) * 8;
+        const targetX =
+        (palm.x - 0.5) * 8;
 
-    const targetY =
-    -(palm.y - 0.5) * 4;
+        const targetY =
+        -(palm.y - 0.5) * 4;
 
-    smoothX +=
-    (targetX - smoothX) * 0.18;
+        smoothX +=
+        (targetX - smoothX)
+        * 0.25;
 
-    smoothY +=
-    (targetY - smoothY) * 0.18;
+        smoothY +=
+        (targetY - smoothY)
+        * 0.25;
 
-    const targetScale =
-    Math.max(
-        0.4,
-        Math.min(
-            2.0,
-            handWidth * 8
-        )
-    );
+        const targetScale =
+        Math.max(
+            0.5,
+            Math.min(
+                2.5,
+                handWidth * 8
+            )
+        );
 
-    smoothScale +=
-    (targetScale - smoothScale)
-    * 0.15;
+        smoothScale +=
+        (targetScale - smoothScale)
+        * 0.2;
 
-    model.visible = true;
+        model.visible = true;
 
-    model.position.set(
-        smoothX,
-        smoothY,
-        0
-    );
+        model.position.set(
+            smoothX,
+            smoothY,
+            0
+        );
 
-    model.scale.set(
-        smoothScale,
-        smoothScale,
-        smoothScale
-    );
+        model.scale.set(
+            smoothScale,
+            smoothScale,
+            smoothScale
+        );
 
-    const dx =
-    pinkyBase.x - indexBase.x;
+        const dx =
+        pinkyBase.x - indexBase.x;
 
-    const dy =
-    pinkyBase.y - indexBase.y;
+        const dy =
+        pinkyBase.y - indexBase.y;
 
-    model.rotation.z =
-    -Math.atan2(dy, dx);
-});
+        model.rotation.z =
+        -Math.atan2(
+            dy,
+            dx
+        );
+    });
 
-const mpCamera =
-new Camera(video, {
-    onFrame: async () => {
-        await hands.send({
-            image: video
-        });
-    },
-    width: 640,
-    height: 480
-});
+    const mpCamera =
+    new Camera(video,{
 
-mpCamera.start();
+        onFrame:async()=>{
 
-function animate() {
+            await hands.send({
+                image:video
+            });
+
+        },
+
+        width:640,
+        height:480
+
+    });
+
+    mpCamera.start();
+}
+
+function animate(){
 
     requestAnimationFrame(
         animate
@@ -210,7 +246,7 @@ animate();
 
 window.addEventListener(
     "resize",
-    () => {
+    ()=>{
 
         camera.aspect =
         window.innerWidth /
