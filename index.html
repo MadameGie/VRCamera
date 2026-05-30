@@ -4,134 +4,96 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>VR Passthrough Camera</title>
+<title>VR Hand Tracking GLB</title>
 
+<!-- A-FRAME -->
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
+<!-- MEDIA PIPE (WAJIB UNTUK HAND TRACKING) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
 <style>
-html,body{
-    margin:0;
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    background:#000;
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: black;
 }
 
-#cameraFeed{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    z-index:0;
+/* CAMERA BACKGROUND */
+#cameraFeed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
 }
 
-#aframeScene{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    z-index:1;
+/* A-FRAME SCENE */
+a-scene {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
 }
 
-#startBtn{
-    position:fixed;
-    z-index:9999;
-    top:20px;
-    left:50%;
-    transform:translateX(-50%);
-    padding:12px 20px;
-    border:none;
-    border-radius:10px;
-    font-size:16px;
+/* BUTTON START */
+#startBtn {
+    position: fixed;
+    z-index: 9999;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    background: white;
+    cursor: pointer;
 }
 </style>
 </head>
+
 <body>
 
+<!-- BUTTON START -->
 <button id="startBtn">Masuk VR</button>
 
-<video
-    id="cameraFeed"
-    autoplay
-    muted
-    playsinline>
-</video>
+<!-- CAMERA FEED -->
+<video id="cameraFeed" autoplay muted playsinline></video>
 
-<a-scene
-    id="aframeScene"
-    embedded
-    vr-mode-ui="enabled: false">
+<!-- GLB ASSET -->
+<a-assets>
+  <a-asset-item id="model3d" src="scene.glb"></a-asset-item>
+</a-assets>
 
-    <a-entity
-        camera
-        look-controls="magicWindowTrackingEnabled:true">
+<!-- VR SCENE -->
+<a-scene embedded vr-mode-ui="enabled: false">
+
+    <!-- GLB DI TANGAN -->
+    <a-entity id="handAnchor">
+        <a-entity
+            id="handModel"
+            gltf-model="#model3d"
+            scale="5 5 5">
+        </a-entity>
     </a-entity>
 
-    <a-box
-        position="0 1.6 -3"
-        rotation="0 45 0"
-        color="#4CC3D9"
-        animation="property: rotation; to: 0 405 0; loop:true; dur:8000">
-    </a-box>
-
-    <a-sphere
-        position="1.5 1.6 -4"
-        radius="0.5"
-        color="#EF2D5E">
-    </a-sphere>
-
-    <a-cylinder
-        position="-1.5 1.2 -4"
-        radius="0.4"
-        height="1"
-        color="#FFC65D">
-    </a-cylinder>
+    <!-- CAMERA -->
+    <a-entity camera look-controls="magicWindowTrackingEnabled:true"></a-entity>
 
 </a-scene>
 
-<script>
-const btn = document.getElementById("startBtn");
-
-btn.addEventListener("click", async () => {
-
-    try{
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video:{
-                facingMode:{
-                    ideal:"environment"
-                }
-            },
-            audio:false
-        });
-
-        document.getElementById("cameraFeed").srcObject = stream;
-
-        if(typeof DeviceMotionEvent !== "undefined" &&
-           typeof DeviceMotionEvent.requestPermission === "function"){
-
-            try{
-                await DeviceMotionEvent.requestPermission();
-            }catch(e){}
-        }
-
-        btn.style.display="none";
-
-        const scene = document.querySelector("a-scene");
-
-        if(scene.enterVR){
-            scene.enterVR();
-        }
-
-    }catch(err){
-        alert("Kamera gagal diakses: " + err.message);
-    }
-
-});
-</script>
+<!-- APP LOGIC -->
+<script src="app.js"></script>
 
 </body>
 </html>
